@@ -1,0 +1,14 @@
+numpy
+pandas
+scipy
+scikit-learn
+matplotlib
+tqdm
+joblib
+PyYAML
+astroquery
+h5py
+openTSNE==1.0.2
+pyarrow
+lightgbm
+lk-stat-package

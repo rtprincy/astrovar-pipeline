@@ -1,0 +1,39 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "astrovar-pipeline"
+version = "0.1.0"
+description = "End-to-end ML pipeline for Gaia light curves: extraction, frequency search, feature engineering, t-SNE+GMM clustering."
+readme = "README.md"
+requires-python = ">=3.9"
+dependencies = [
+    "numpy",
+    "pandas",
+    "scipy",
+    "scikit-learn",
+    "matplotlib",
+    "tqdm",
+    "joblib",
+    "pyyaml",
+    "astroquery",
+    "h5py",
+    "openTSNE",
+    "pyarrow",
+    "lightgbm",
+]
+
+[project.scripts]
+astrovar = "astrovar_pipeline.cli:app"
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["astrovar_pipeline*"]
+exclude = ["inputs*", "outputs*", "scripts*", "docs*", "examples*"]
+
+[tool.setuptools.package-data]
+astrovar_pipeline = [
+    "configs/*.yaml",
+    "scripts/*.sh"
+]

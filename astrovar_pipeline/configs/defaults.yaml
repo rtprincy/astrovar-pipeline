@@ -1,0 +1,62 @@
+
+# Gaia and I/O
+gaia:
+  username: "${GAIA_USER}"      # or set explicitly here
+  password: "${GAIA_PASS}"      # or set explicitly here
+  tap_url: "https://gea.esac.esa.int/tap-server/tap"
+data:
+  source_id_list: "inputs/source_ids.csv"   # CSV with a 'source_id' column
+  outdir: "outputs"
+  cache_dir: "outputs/cache"
+  overwrite: false
+
+# Extraction
+extraction:
+  min_points_g: 24
+  min_points_bp: 24
+  min_points_rp: 24
+  bandset: ["g", "bp", "rp"]
+  parallel_workers: 8
+
+# Frequency search
+frequency_search:
+  method: "psi"  # psi or ls_only
+  min_freq: 0
+  max_freq: 50.0
+  oversample: 5
+  fap_threshold: 0.01
+  save_periodogram: true
+  parallel_workers: 8
+
+# Feature engineering
+features:
+  include_periodogram_features: true
+  include_lc_statistics: true
+  augment_with_gaia_summary: true
+  summary_stat_table: "gaiadr3.vari_summary"  # override if needed
+  parallel_workers: 8
+
+# Dimensionality reduction & clustering
+ml:
+  correlation_threshold: 0.95
+  tsne:
+    perplexity_grid: [30, 40, 50]
+    learning_rate_grid: [200, 400, 600]
+    n_iter: 2000
+    metric: "euclidean"
+    random_state: 42
+  gmm:
+    n_components_grid: [2, 3, 4]
+    covariance_type: "full"
+    n_init: 5
+    random_state: 42
+  rf_prune:
+    enabled: true
+    n_estimators: 500
+    top_k_features: 60
+    random_state: 42
+
+# Visualization
+viz:
+  tsne_scatter: true
+  feature_importances: true
