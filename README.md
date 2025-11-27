@@ -9,7 +9,15 @@ A clean, modular ML pipeline that integrates your existing scripts to:
 
 ## Quick start
 ```bash
+python3 -m venv .venv
+source .venv/bin/activate       # (on macOS/Linux)
+# or
+.venv\Scripts\activate          # (on Windows PowerShell)
 pip install -e .
+
+export GAIA_USER="your_gaia_username"
+export GAIA_PASS="your_gaia_password"
+
 astrovar run --config configs/defaults.yaml
 ```
 
