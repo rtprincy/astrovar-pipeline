@@ -21,22 +21,22 @@ def extract_features_from_lc(lc: pd.DataFrame, per_g: PeriodogramBundle|None=Non
     # Add periodogram features
     if (per_g is not None) & (per_bp is not None) & (per_rp is not None):
 
-        mag_g = lc['g_transit_mag'].values
-        Time_g = lc['g_transit_time'].values
-        flux_g = lc['g_transit_flux'].values
-        flux_err_g = lc['g_transit_flux_error'].values
+        mag_g = lc['g_transit_mag'].dropna().values
+        Time_g = lc['g_transit_time'].dropna().values
+        flux_g = lc['g_transit_flux'].dropna().values
+        flux_err_g = lc['g_transit_flux_error'].dropna().values
         mag_err_g = (2.5 / np.log(10)) * (flux_err_g / flux_g)
 
-        mag_bp = lc['bp_mag'].values
-        Time_bp = lc['bp_obs_time'].values
-        flux_bp = lc['bp_flux'].values
-        flux_err_bp = lc['bp_flux_error'].values
+        mag_bp = lc['bp_mag'].dropna().values
+        Time_bp = lc['bp_obs_time'].dropna().values
+        flux_bp = lc['bp_flux'].dropna().values
+        flux_err_bp = lc['bp_flux_error'].dropna().values
         mag_err_bp = (2.5 / np.log(10)) * (flux_err_bp / flux_bp)
 
-        mag_rp = lc['rp_mag'].values
-        Time_rp = lc['rp_obs_time'].values
-        flux_rp = lc['rp_flux'].values
-        flux_err_rp = lc['rp_flux_error'].values
+        mag_rp = lc['rp_mag'].dropna().values
+        Time_rp = lc['rp_obs_time'].dropna().values
+        flux_rp = lc['rp_flux'].dropna().values
+        flux_err_rp = lc['rp_flux_error'].dropna().values
         mag_err_rp = (2.5 / np.log(10)) * (flux_err_rp / flux_rp)
 
         best_freq_g=per_g.freq[np.nanargmax(per_g.psi)]
@@ -51,12 +51,10 @@ def extract_features_from_lc(lc: pd.DataFrame, per_g: PeriodogramBundle|None=Non
         std_period=np.std([best_period_g,best_period_bp,best_period_rp])
         frac_period=(best_period_g)/std_period
 
-        print("Extracting features from light curves and periodograms")
-
-        featG=lcs(mag_g, mag_err_g, Time_g, per_g.lsp,per_g.psi, per_g.freq, flux_g, flux_err_g, best_freq_g, 'G')
-        featBP=lcs(mag_bp, mag_err_bp, Time_bp, per_bp.lsp,per_bp.psi, per_bp.freq, flux_bp, flux_err_bp, best_freq_bp, 'BP')
-        featRP=lcs(mag_rp, mag_err_rp, Time_rp, per_rp.lsp,per_rp.psi, per_rp.freq, flux_rp, flux_err_rp, best_freq_rp, 'RP')
-
+        featG=lcs('G',mag_g, mag_err_g, Time_g, per_g.lsp,per_g.psi, per_g.freq, flux_g, flux_err_g, best_freq_g)
+        featBP=lcs('BP',mag_bp, mag_err_bp, Time_bp, per_bp.lsp,per_bp.psi, per_bp.freq, flux_bp, flux_err_bp, best_freq_bp)
+        featRP=lcs('RP',mag_rp, mag_err_rp, Time_rp, per_rp.lsp,per_rp.psi, per_rp.freq, flux_rp, flux_err_rp, best_freq_rp)
+        
         feats.update(featG.compute_all_parameters())
         feats.update(featBP.compute_all_parameters())
         feats.update(featRP.compute_all_parameters())

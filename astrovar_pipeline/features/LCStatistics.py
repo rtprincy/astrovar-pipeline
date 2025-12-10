@@ -4,7 +4,7 @@ from astropy.timeseries import LombScargle
 from astropy.timeseries.periodograms.lombscargle import utils
 
 class LCStatistics:
-    def __init__(self, mag, magerr, Time=None, lspower=None,psi=None, frequencies=None, flux=None, flux_err=None, best_freq=None,band='G'):
+    def __init__(self, band, mag, magerr, Time=None, lspower=None,psi=None, frequencies=None, flux=None, flux_err=None, best_freq=None):
         """
         Initializes the class with input data.
         
@@ -18,6 +18,7 @@ class LCStatistics:
         flux_err (array): Flux error.
         best_freq (float): Best frequency value (dominant frequency).
         """
+        self.band = band
         self.mag = mag
         self.magerr = magerr
         self.Time = Time
@@ -28,7 +29,7 @@ class LCStatistics:
         self.flux = flux
         self.flux_err = flux_err
         self.best_freq = best_freq
-        self.band = band
+        
 
     def ptp_amplitude(self,n_bins = 10,return_binned_mag=False):
         period=1/self.best_freq
@@ -249,16 +250,6 @@ class LCStatistics:
         #     results['abbe_value'] = self.abbe_value()
         # except Exception as e:
         #     results['abbe_value'] = np.nan
-    
-        try:
-            results[f'amp_{self.band}'] = np.abs(self.amplitude())
-        except Exception as e:
-            results[f'amp_{self.band}'] = np.nan
-        try:
-            results[f'fap_{self.band}'] = self.fap()
-        except Exception as e:
-            results[f'fap_{self.band}'] = np.nan
-    
         # try:
         #     results['magnitude_range'] = self.magnitude_range()
         # except Exception as e:
@@ -270,6 +261,14 @@ class LCStatistics:
         #     results['iqr'] = np.nan
 
         if self.band=='G':
+            try:
+                results[f'amp_{self.band}'] = np.abs(self.amplitude())
+            except Exception as e:
+                results[f'amp_{self.band}'] = np.nan
+            try:
+                results[f'fap_{self.band}'] = self.fap()
+            except Exception as e:
+                results[f'fap_{self.band}'] = np.nan
             try:
                 results['log_sigvar'] = self.log_sigvar()
             except Exception as e:
@@ -319,4 +318,25 @@ class LCStatistics:
                 results['rms_over_ptp_amp'] = self.rms_over_ptp_amp()
             except Exception as e:
                 results['rms_over_ptp_amp'] = np.nan
+
+        elif self.band=="BP":
+            try:
+                results[f'amp_{self.band}'] = np.abs(self.amplitude())
+            except Exception as e:
+                results[f'amp_{self.band}'] = np.nan
+            try:
+                results[f'fap_{self.band}'] = self.fap()
+            except Exception as e:
+                results[f'fap_{self.band}'] = np.nan
+
+        elif self.band=="RP":
+            try:
+                results[f'amp_{self.band}'] = np.abs(self.amplitude())
+            except Exception as e:
+                results[f'amp_{self.band}'] = np.nan
+            try:
+                results[f'fap_{self.band}'] = self.fap()
+            except Exception as e:
+                results[f'fap_{self.band}'] = np.nan
+
         return results

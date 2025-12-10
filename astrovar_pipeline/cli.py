@@ -11,6 +11,7 @@ from lk_stat_package import lk_stat
 from .features.extract import extract_features_from_lc, PeriodogramBundle, augment_with_gaia_summary
 from .models.pipeline import remove_correlated, optimize_tsne, optimize_gmm, rf_prune_features
 from .viz.plots import plot_tsne, plot_importances
+from sklearn.preprocessing import StandardScaler
 import numpy as np
 
 def app():
@@ -113,25 +114,28 @@ def app():
     if args.command in ("run","cluster"):
         feats_df = pd.read_csv(outdir / "features_raw.csv")
         feats_df = feats_df.drop(columns=['source_id'])
-        print("Number of features: ",feats_df.shape[1])
         print("Feature list:",feats_df.columns.values)
-        X = feats_df.select_dtypes("number").fillna(feats_df.median(numeric_only=True))
+        # X = feats_df.select_dtypes("number").fillna(feats_df.median(numeric_only=True))
+        X = feats_df.select_dtypes("number").dropna()
         X1, dropped = remove_correlated(X, cfg["ml"]["correlation_threshold"])
+        scaler = StandardScaler()
+        X1_norm = scaler.fit_transform(X1)
+        X1_norm = pd.DataFrame(X1_norm, columns=X1.columns)
         print("Number of reduced features: ", X1.shape[1])
-        emb, tsne_params = optimize_tsne(X1.to_numpy(), cfg["ml"]["tsne"])
+        emb, tsne_params = optimize_tsne(X1_norm, cfg["ml"]["tsne"])
         labels, gmm_cfg, gmm_model = optimize_gmm(emb, cfg["ml"]["gmm"])
         # RF pruning
         if cfg["ml"]["rf_prune"]["enabled"]:
-            X2, importances = rf_prune_features(X1, labels, top_k=cfg["ml"]["rf_prune"]["top_k_features"],
+            X2, importances = rf_prune_features(X1_norm, labels, top_k=cfg["ml"]["rf_prune"]["top_k_features"],
                                                 random_state=cfg["ml"]["rf_prune"]["random_state"])
             emb2, tsne_params2 = optimize_tsne(X2.to_numpy(), cfg["ml"]["tsne"])
             labels2, gmm_cfg2, gmm_model2 = optimize_gmm(emb2, cfg["ml"]["gmm"])
             importances.to_csv(outdir / "rf_importances.csv")
             plot_importances(importances, str(outdir / "rf_importances_top30.png"))
             np.save(outdir / "tsne_embedding.npy", emb2)
-            pd.DataFrame({"source_id":feats_df.index, "label":labels2}).to_csv(outdir / "cluster_labels.csv", index=False)
+            pd.DataFrame({"source_id":X1_norm.index, "label":labels2}).to_csv(outdir / "cluster_labels.csv", index=False)
             plot_tsne(emb2, labels2, str(outdir / "tsne_clusters.png"))
         else:
             np.save(outdir / "tsne_embedding.npy", emb)
-            pd.DataFrame({"source_id":feats_df.index, "label":labels}).to_csv(outdir / "cluster_labels.csv", index=False)
+            pd.DataFrame({"source_id":X1_norm.index, "label":labels}).to_csv(outdir / "cluster_labels.csv", index=False)
             plot_tsne(emb, labels, str(outdir / "tsne_clusters.png"))
