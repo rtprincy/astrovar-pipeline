@@ -120,10 +120,10 @@ def app():
         X1, dropped = remove_correlated(X, cfg["ml"]["correlation_threshold"])
         scaler = StandardScaler()
         X1_norm = scaler.fit_transform(X1)
-        X1_norm = pd.DataFrame(X1_norm, columns=X1.columns)
-        print("Number of reduced features: ", X1.shape[1])
         emb, tsne_params = optimize_tsne(X1_norm, cfg["ml"]["tsne"])
         labels, gmm_cfg, gmm_model = optimize_gmm(emb, cfg["ml"]["gmm"])
+        X1_norm = pd.DataFrame(X1_norm, columns=X1.columns)
+        print("Number of reduced features: ", X1.shape[1])
         # RF pruning
         if cfg["ml"]["rf_prune"]["enabled"]:
             X2, importances = rf_prune_features(X1_norm, labels, top_k=cfg["ml"]["rf_prune"]["top_k_features"],
