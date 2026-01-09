@@ -49,6 +49,6 @@ You can also run individual stages, e.g.:
 ## References:
 For more details on the unsupervised clustering methods using t-SNE, please see the following papers:
 
-Ranaivomanana et al. (2025a): https://arxiv.org/abs/2411.18609
-Ranaivomanana et al. (2025b): https://arxiv.org/abs/2510.23776
+1) Ranaivomanana et al. (2025a): https://arxiv.org/abs/2411.18609
+2) Ranaivomanana et al. (2025b): https://arxiv.org/abs/2510.23776
 
