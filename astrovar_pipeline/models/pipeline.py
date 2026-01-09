@@ -17,13 +17,13 @@ def remove_correlated(df: pd.DataFrame, threshold: float=0.95) -> pd.DataFrame:
 
 def optimize_tsne(X: np.ndarray, params: Dict[str, Any]) -> Tuple[np.ndarray, Dict[str, Any]]:
     best_score=-np.inf; best_emb=None; best_p=None
-    for perp in params.get("perplexity_grid",[5]):
-        for lr in params.get("learning_rate_grid",[200]):
+    for perp in params.get("perplexity_grid",[50]):
+        for lr in params.get("learning_rate_grid",[600]):
             print("perplexity: ",perp)
-            emb = TSNE(n_components=2, perplexity=perp, learning_rate=lr, n_iter=params.get("n_iter",1000),
-                       metric=params.get("metric","euclidean"), random_state=params.get("random_state",42)).fit(X)
+            print("learning rate: ", lr)
+            emb = TSNE(n_components=2, perplexity=perp, learning_rate=lr, n_iter=params.get("n_iter",1000),initialization="pca").fit(X)
             # No labels yet; proxy quality via KNN preservation is expensive; use clusterability via GMM+BIC as heuristic
-            gmm = GaussianMixture(n_components=10, covariance_type="full", random_state=42).fit(emb)
+            gmm = GaussianMixture(n_components=10, covariance_type="spherical", random_state=42).fit(emb)
             score = -gmm.bic(emb)
             if score > best_score:
                 best_score=score; best_emb=emb; best_p={"perplexity":perp, "learning_rate":lr}
@@ -31,9 +31,10 @@ def optimize_tsne(X: np.ndarray, params: Dict[str, Any]) -> Tuple[np.ndarray, Di
 
 def optimize_gmm(X: np.ndarray, params: Dict[str, Any]) -> Tuple[np.ndarray, Dict[str, Any], GaussianMixture]:
     best_bic=np.inf; best_labels=None; best_cfg=None; best_model=None
-    for k in params.get("n_components_grid",[8,10,12]):
-        gmm = GaussianMixture(n_components=k, covariance_type=params.get("covariance_type","full"),
-                              n_init=params.get("n_init",5), random_state=params.get("random_state",42))
+    for k in params.get("n_components_grid",[3,4]):
+        print("GMM n components: ", k)
+        gmm = GaussianMixture(n_components=k, covariance_type=params.get("covariance_type","spherical"),
+                              n_init=params.get("n_init",10), random_state=params.get("random_state",42))
         gmm.fit(X)
         bic = gmm.bic(X)
         if bic < best_bic:

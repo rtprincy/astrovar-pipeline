@@ -12,47 +12,35 @@ data:
 
 # Extraction
 extraction:
-  min_points_g: 24
-  min_points_bp: 24
-  min_points_rp: 24
-  bandset: ["g", "bp", "rp"]
-  parallel_workers: 8
+  min_points: 24
 
 # Frequency search
 frequency_search:
-  method: "psi"  # psi or ls_only
   min_freq: 0
-  max_freq: 50.0
-  oversample: 5
-  fap_threshold: 0.01
-  save_periodogram: true
-  parallel_workers: 8
+  max_freq: 360.0
+  oversample: 10
 
 # Feature engineering
 features:
-  include_periodogram_features: true
-  include_lc_statistics: true
   augment_with_gaia_summary: true
-  summary_stat_table: "gaiadr3.vari_summary"  # override if needed
-  parallel_workers: 8
 
 # Dimensionality reduction & clustering
 ml:
   correlation_threshold: 0.95
   tsne:
-    perplexity_grid: [30, 40, 50]
-    learning_rate_grid: [200, 400, 600]
-    n_iter: 2000
+    perplexity_grid: [30,50]
+    learning_rate_grid: [200,300]
+    n_iter: 1000
     metric: "euclidean"
     random_state: 42
   gmm:
-    n_components_grid: [2, 3, 4]
-    covariance_type: "full"
-    n_init: 5
+    n_components_grid: [3,4]
+    covariance_type: 'spherical'
+    n_init: 10
     random_state: 42
   rf_prune:
     enabled: true
-    n_estimators: 500
+    n_estimators: 100
     top_k_features: 60
     random_state: 42
 

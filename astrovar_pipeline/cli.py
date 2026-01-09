@@ -38,23 +38,54 @@ def app():
             sid = int(p.stem)
             print("Processing periodogram for ",sid)
             lc = pd.read_csv(p)
-            lc_flag=(lc['variability_flag_g_reject'].values)&(lc['variability_flag_bp_reject'].values)&(lc['variability_flag_rp_reject'].values)
-            lc = lc[~lc_flag] 
+
+            #lc_flag=(lc['variability_flag_g_reject'].values)&(lc['variability_flag_bp_reject'].values)&(lc['variability_flag_rp_reject'].values)
+            lc_g = lc[~lc['variability_flag_g_reject'].values]
+            lc_bp = lc[~lc['variability_flag_bp_reject'].values]
+            lc_rp = lc[~lc['variability_flag_rp_reject'].values]
+
             # Compute periodogram on g-band subset if available
             lc=lc.dropna()
-            if lc.shape[0]< 25: 
+            if lc.shape[0] < cfg['extraction']['min_points']: 
                 continue
 
             if os.path.exists(per_dir / f"{sid}_rp.npz")==False:
-                per_g = psi_periodogram(lc["g_transit_time"].values, lc["g_transit_flux"].values, lc["g_transit_flux_error"].values,
+                mag_g = lc_g['g_transit_mag'].dropna().values
+                Time_g = lc_g['g_transit_time'].dropna().values
+                flux_g = lc_g['g_transit_flux'].dropna().values
+                flux_err_g = lc_g['g_transit_flux_error'].dropna().values
+                mag_err_g = (2.5 / np.log(10)) * (flux_err_g / flux_g)
+
+                mag_bp = lc_bp['bp_mag'].dropna().values
+                Time_bp = lc_bp['bp_obs_time'].dropna().values
+                flux_bp = lc_bp['bp_flux'].dropna().values
+                flux_err_bp = lc_bp['bp_flux_error'].dropna().values
+                mag_err_bp = (2.5 / np.log(10)) * (flux_err_bp / flux_bp)
+
+                mag_rp = lc_rp['rp_mag'].dropna().values
+                Time_rp = lc_rp['rp_obs_time'].dropna().values
+                flux_rp = lc_rp['rp_flux'].dropna().values
+                flux_err_rp = lc_rp['rp_flux_error'].dropna().values
+                mag_err_rp = (2.5 / np.log(10)) * (flux_err_rp / flux_rp)
+
+                per_g = psi_periodogram(Time_g, mag_g, mag_err_g,
                                   cfg["frequency_search"]["min_freq"], cfg["frequency_search"]["max_freq"], cfg["frequency_search"]["oversample"])
 
-                per_bp = psi_periodogram(lc["bp_obs_time"].values, lc["bp_flux"].values, lc["bp_flux_error"].values,
+                per_bp = psi_periodogram(Time_bp, mag_bp, mag_err_bp,
                                   cfg["frequency_search"]["min_freq"], cfg["frequency_search"]["max_freq"], cfg["frequency_search"]["oversample"])
 
-                per_rp = psi_periodogram(lc["rp_obs_time"].values, lc["rp_flux"].values, lc["rp_flux_error"].values,
+                per_rp = psi_periodogram(Time_rp, mag_rp, mag_err_rp,
                                   cfg["frequency_search"]["min_freq"], cfg["frequency_search"]["max_freq"], cfg["frequency_search"]["oversample"])
             
+
+                # per_g = psi_periodogram(lc["g_transit_time"].values, lc["g_transit_flux"].values, lc["g_transit_flux_error"].values,
+                #                   cfg["frequency_search"]["min_freq"], cfg["frequency_search"]["max_freq"], cfg["frequency_search"]["oversample"])
+
+                # per_bp = psi_periodogram(lc["bp_obs_time"].values, lc["bp_flux"].values, lc["bp_flux_error"].values,
+                #                   cfg["frequency_search"]["min_freq"], cfg["frequency_search"]["max_freq"], cfg["frequency_search"]["oversample"])
+
+                # per_rp = psi_periodogram(lc["rp_obs_time"].values, lc["rp_flux"].values, lc["rp_flux_error"].values,
+                #                   cfg["frequency_search"]["min_freq"], cfg["frequency_search"]["max_freq"], cfg["frequency_search"]["oversample"])            
                 np.savez(per_dir / f"{sid}_g.npz", **per_g)
                 np.savez(per_dir / f"{sid}_bp.npz", **per_bp)
                 np.savez(per_dir / f"{sid}_rp.npz", **per_rp)
@@ -98,7 +129,7 @@ def app():
                 z_rp=np.load(npz_rp)
                 per_rp = PeriodogramBundle(freq=z_rp["freq"], lsp=z_rp["lsp"], theta=z_rp["theta"], psi=z_rp["psi"])
 
-            feats = extract_features_from_lc(lc, per_g,per_bp,per_rp)
+            feats = extract_features_from_lc(cfg["frequency_search"]["oversample"],lc, per_g,per_bp,per_rp)
             feats["source_id"]=sid
             feat_rows.append(feats)
 
@@ -120,10 +151,10 @@ def app():
         X1, dropped = remove_correlated(X, cfg["ml"]["correlation_threshold"])
         scaler = StandardScaler()
         X1_norm = scaler.fit_transform(X1)
-        emb, tsne_params = optimize_tsne(X1_norm, cfg["ml"]["tsne"])
-        labels, gmm_cfg, gmm_model = optimize_gmm(emb, cfg["ml"]["gmm"])
-        X1_norm = pd.DataFrame(X1_norm, columns=X1.columns)
         print("Number of reduced features: ", X1.shape[1])
+        emb, tsne_params = optimize_tsne(X1_norm, cfg["ml"]["tsne"])
+        X1_norm = pd.DataFrame(X1_norm, columns=X1.columns)
+        labels, gmm_cfg, gmm_model = optimize_gmm(emb, cfg["ml"]["gmm"])
         # RF pruning
         if cfg["ml"]["rf_prune"]["enabled"]:
             X2, importances = rf_prune_features(X1_norm, labels, top_k=cfg["ml"]["rf_prune"]["top_k_features"],
