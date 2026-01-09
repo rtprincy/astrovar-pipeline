@@ -1,7 +1,8 @@
 
 # astrovar-pipeline
 
-A clean, modular ML pipeline that integrates your existing scripts to:
+A clean, modular unsupervised machine learning pipeline to:
+
 1) Extract Gaia DR3 light curves from a list of source IDs
 2) Run a hybrid frequency search (LS + LK / Ψ-statistic) on each light curve
 3) Compute light-curve & periodogram features, plus augment with Gaia summary statistics
