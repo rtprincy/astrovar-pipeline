@@ -1,7 +1,7 @@
 
 # astrovar-pipeline
 
-A clean, modular unsupervised machine learning pipeline to:
+A modular unsupervised learning pipeline for Gaia DR3 light curve classifications, following the below steps:
 
 1) Extract Gaia DR3 light curves from a list of source IDs
 2) Run a hybrid frequency search (LS + LK / Ψ-statistic) on each light curve
