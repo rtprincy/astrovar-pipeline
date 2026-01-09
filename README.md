@@ -8,21 +8,20 @@ A clean, modular ML pipeline that integrates your existing scripts to:
 4) De-correlate & select features; embed with t-SNE; cluster with GMM; prune with RF importance; re-embed/re-cluster; visualize.
 
 ## Quick start
-
+```bash
 >> git clone https://github.com/rtprincy/astrovar-pipeline.git
 >> cd astrovar-pipeline
 
-```bash
-python3 -m venv .venv
-source .venv/bin/activate       # (on macOS/Linux)
+>> python3 -m venv .venv
+>> source .venv/bin/activate       # (on macOS/Linux)
 # or
-.venv\Scripts\activate          # (on Windows PowerShell)
-pip install -e .
+>> .venv\Scripts\activate          # (on Windows PowerShell)
+>> pip install -e .
 
-export GAIA_USER="your_gaia_username"
-export GAIA_PASS="your_gaia_password"
+>> export GAIA_USER="your_gaia_username"
+>> export GAIA_PASS="your_gaia_password"
 
-astrovar run --config astrovar_pipeline/configs/defaults.yaml
+>> astrovar run --config astrovar_pipeline/configs/defaults.yaml
 ```
 
 Outputs land under `./outputs/` by default.
@@ -31,17 +30,18 @@ Edit `astrovar_pipeline/configs/defaults.yaml` to set Gaia credentials, data pat
 You can also run individual stages, e.g.:
 
 ### To extract Gaia light curves:
-
+```bash
 >> astrovar extract --config astrovar_pipeline/configs/defaults.yaml 
-
+```
 ### To run frequency search:
-
+```bash
 >> astrovar freq --config astrovar_pipeline/configs/defaults.yaml
-
+```
 ### To extract features:
-
+```bash
 >> astrovar features --config astrovar_pipeline/configs/defaults.yaml
-
+```
 ### To cluster objects:
-
+```bash
 >> astrovar cluster --config astrovar_pipeline/configs/defaults.yaml
+```
