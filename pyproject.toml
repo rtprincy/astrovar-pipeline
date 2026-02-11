@@ -22,6 +22,7 @@ dependencies = [
     "openTSNE",
     "pyarrow",
     "lightgbm",
+    "lk-stat-package"
 ]
 
 [project.scripts]
