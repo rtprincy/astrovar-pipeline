@@ -55,7 +55,7 @@ def app():
         rows = []
         for p in lc_dir.glob("*.csv"):
             sid = int(p.stem)
-            print("Processing periodogram for ", sid)
+            print(f"Processing periodogram for {sid}")
             lc = pd.read_csv(p)
 
             # lc_flag=(lc['variability_flag_g_reject'].values)&(lc['variability_flag_bp_reject'].values)&(lc['variability_flag_rp_reject'].values)
@@ -68,7 +68,7 @@ def app():
             if lc.shape[0] < cfg["extraction"]["min_points"]:
                 continue
 
-            if os.path.exists(per_dir / f"{sid}_rp.npz") == False:
+            if not os.path.exists(per_dir / f"{sid}_rp.npz"):
                 mag_g = lc_g["g_transit_mag"].dropna().to_numpy(copy=True)
                 Time_g = lc_g["g_transit_time"].dropna().to_numpy(copy=True)
                 flux_g = lc_g["g_transit_flux"].dropna().to_numpy(copy=True)
@@ -87,6 +87,7 @@ def app():
                 flux_err_rp = lc_rp["rp_flux_error"].dropna().to_numpy(copy=True)
                 mag_err_rp = (2.5 / np.log(10)) * (flux_err_rp / flux_rp)
 
+                print("G-band")
                 per_g = psi_periodogram(
                     Time_g,
                     mag_g,
@@ -96,6 +97,7 @@ def app():
                     cfg["frequency_search"]["oversample"],
                 )
 
+                print("BP-band")
                 per_bp = psi_periodogram(
                     Time_bp,
                     mag_bp,
@@ -105,6 +107,7 @@ def app():
                     cfg["frequency_search"]["oversample"],
                 )
 
+                print("RP-band")
                 per_rp = psi_periodogram(
                     Time_rp,
                     mag_rp,
@@ -136,17 +139,7 @@ def app():
                 {
                     "source_id": sid,
                     "best_freq_g": float(per_g["freq"][np.nanargmax(per_g["psi"])]),
-                }
-            )
-            rows.append(
-                {
-                    "source_id": sid,
                     "best_freq_bp": float(per_bp["freq"][np.nanargmax(per_bp["psi"])]),
-                }
-            )
-            rows.append(
-                {
-                    "source_id": sid,
                     "best_freq_rp": float(per_rp["freq"][np.nanargmax(per_rp["psi"])]),
                 }
             )
