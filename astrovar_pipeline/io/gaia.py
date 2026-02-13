@@ -4,6 +4,8 @@ import pandas as pd
 from pathlib import Path
 from typing import List, Tuple
 from astroquery.gaia import Gaia
+import astropy.units as u
+import warnings
 import tqdm
 
 
@@ -26,8 +28,7 @@ def read_source_ids(csv_path: str) -> List[int]:
 
 
 def fetch_gaia_epoch_photometry(
-    source_ids: List[int],
-    outdir: str
+    source_ids: List[int], outdir: str
 ) -> List[Tuple[int, str]]:
     """
     Fetch Gaia DR3 epoch photometry for a list of source IDs using the
@@ -54,14 +55,17 @@ def fetch_gaia_epoch_photometry(
             continue  # skip already-downloaded
 
         try:
-            lc = Gaia.load_data(
-                [source_id],
-                data_release="Gaia DR3",
-                data_structure="INDIVIDUAL",
-                retrieval_type="EPOCH_PHOTOMETRY",
-                valid_data=True,
-                format="fits",
-            )
+            with warnings.catch_warnings():
+                warnings.simplefilter("ignore", category=u.UnitsWarning)
+
+                lc = Gaia.load_data(
+                    [source_id],
+                    data_release="Gaia DR3",
+                    data_structure="INDIVIDUAL",
+                    retrieval_type="EPOCH_PHOTOMETRY",
+                    valid_data=True,
+                    format="fits",
+                )
             # Convert FITS to pandas DataFrame
             gaia_lc = lc[list(lc.keys())[0]][0]
             gband_frame = gaia_lc.to_pandas()
