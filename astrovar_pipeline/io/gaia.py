@@ -49,29 +49,43 @@ def fetch_gaia_epoch_photometry(
     outdir.mkdir(parents=True, exist_ok=True)
 
     downloaded = []
-    for source_id in tqdm.tqdm(source_ids, desc="Downloading Gaia light curves"):
+
+    ids_to_download = []
+    for source_id in source_ids:
         path = outdir / f"{source_id}.csv"
         if path.exists():
-            continue  # skip already-downloaded
+            continue  # already downloaded
+
+        ids_to_download.append(source_id)
+
+    batch_size = 1000
+
+    for i in tqdm.tqdm(
+        range(0, len(ids_to_download), batch_size), "Downloading Gaia light curves"
+    ):
+        start, end = i, min(i + batch_size, len(ids_to_download))
+        curr_ids = ids_to_download[start:end]
 
         try:
             with warnings.catch_warnings():
                 warnings.simplefilter("ignore", category=u.UnitsWarning)
 
-                lc = Gaia.load_data(
-                    [source_id],
+                lcs = Gaia.load_data(
+                    curr_ids,
                     data_release="Gaia DR3",
                     data_structure="INDIVIDUAL",
                     retrieval_type="EPOCH_PHOTOMETRY",
                     valid_data=True,
                     format="fits",
                 )
-            # Convert FITS to pandas DataFrame
-            gaia_lc = lc[list(lc.keys())[0]][0]
-            gband_frame = gaia_lc.to_pandas()
-            gband_frame.to_csv(path, index=False)
-            downloaded.append((source_id, str(path)))
+
+                for lc in lcs:
+                    id = lc.strip("EPOCH_PHOTOMETRY-Gaia DR3 ").strip(".fits")
+                    path = f"{outdir}/{id}.csv"
+                    table = lcs[lc][0]
+                    table.write(path, overwrite=True)
+                    downloaded.append((source_id, path))
         except Exception as e:
-            print(f"❌ Failed for {source_id}: {e}")
+            print(f"Failed download for {curr_ids}: {e}")
 
     return downloaded
