@@ -21,6 +21,7 @@ from .models.pipeline import (
 from .viz.plots import plot_tsne, plot_importances
 from sklearn.preprocessing import StandardScaler
 import numpy as np
+from tqdm import tqdm
 
 
 def app():
@@ -53,9 +54,9 @@ def app():
         per_dir = outdir / "periodograms"
         per_dir.mkdir(exist_ok=True)
         rows = []
-        for p in lc_dir.glob("*.csv"):
+        lcs = list(lc_dir.glob("*csv"))
+        for p in tqdm(lcs, "Processing lightcurves"):
             sid = int(p.stem)
-            print(f"Processing periodogram for {sid}")
             lc = pd.read_csv(p)
 
             # lc_flag=(lc['variability_flag_g_reject'].values)&(lc['variability_flag_bp_reject'].values)&(lc['variability_flag_rp_reject'].values)
@@ -87,7 +88,7 @@ def app():
                 flux_err_rp = lc_rp["rp_flux_error"].dropna().to_numpy(copy=True)
                 mag_err_rp = (2.5 / np.log(10)) * (flux_err_rp / flux_rp)
 
-                print("G-band")
+                # print("G-band")
                 per_g = psi_periodogram(
                     Time_g,
                     mag_g,
@@ -97,7 +98,7 @@ def app():
                     cfg["frequency_search"]["oversample"],
                 )
 
-                print("BP-band")
+                # print("BP-band")
                 per_bp = psi_periodogram(
                     Time_bp,
                     mag_bp,
@@ -107,7 +108,7 @@ def app():
                     cfg["frequency_search"]["oversample"],
                 )
 
-                print("RP-band")
+                # print("RP-band")
                 per_rp = psi_periodogram(
                     Time_rp,
                     mag_rp,
