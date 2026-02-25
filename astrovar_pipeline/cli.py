@@ -57,19 +57,20 @@ def app():
         lcs = list(lc_dir.glob("*csv"))
         for p in tqdm(lcs, "Processing lightcurves"):
             sid = int(p.stem)
-            lc = pd.read_csv(p)
-
-            # lc_flag=(lc['variability_flag_g_reject'].values)&(lc['variability_flag_bp_reject'].values)&(lc['variability_flag_rp_reject'].values)
-            lc_g = lc[~lc["variability_flag_g_reject"].values]
-            lc_bp = lc[~lc["variability_flag_bp_reject"].values]
-            lc_rp = lc[~lc["variability_flag_rp_reject"].values]
-
-            # Compute periodogram on g-band subset if available
-            lc = lc.dropna()
-            if lc.shape[0] < cfg["extraction"]["min_points"]:
-                continue
 
             if not os.path.exists(per_dir / f"{sid}_rp.npz"):
+                lc = pd.read_csv(p)
+
+                # lc_flag=(lc['variability_flag_g_reject'].values)&(lc['variability_flag_bp_reject'].values)&(lc['variability_flag_rp_reject'].values)
+                lc_g = lc[~lc["variability_flag_g_reject"].values]
+                lc_bp = lc[~lc["variability_flag_bp_reject"].values]
+                lc_rp = lc[~lc["variability_flag_rp_reject"].values]
+
+                # Compute periodogram on g-band subset if available
+                lc = lc.dropna()
+                if lc.shape[0] < cfg["extraction"]["min_points"]:
+                    continue
+
                 mag_g = lc_g["g_transit_mag"].dropna().to_numpy(copy=True)
                 Time_g = lc_g["g_transit_time"].dropna().to_numpy(copy=True)
                 flux_g = lc_g["g_transit_flux"].dropna().to_numpy(copy=True)
@@ -145,7 +146,7 @@ def app():
                 }
             )
 
-        pd.DataFrame(rows).to_csv(outdir / "periodogram_summary.csv", index=False)
+            pd.DataFrame(rows).to_csv(outdir / "periodogram_summary.csv", index=False)
         if args.command != "run":
             return
 
