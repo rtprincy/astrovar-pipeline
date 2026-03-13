@@ -37,14 +37,16 @@ def app():
     args = parser.parse_args()
 
     cfg = load_config(args.config)
+    sids = read_source_ids(cfg["data"]["source_id_list"])
+
     outdir = Path(cfg["data"]["outdir"])
     outdir.mkdir(parents=True, exist_ok=True)
+
     cache = Path(cfg["data"]["cache_dir"])
     cache.mkdir(parents=True, exist_ok=True)
 
     if args.command in ("run", "extract"):
         login(cfg["gaia"].get("username"), cfg["gaia"].get("password"))
-        sids = read_source_ids(cfg["data"]["source_id_list"])
         fetch_gaia_epoch_photometry(sids, outdir / "lightcurves")
         if args.command != "run":
             return
@@ -54,7 +56,7 @@ def app():
         per_dir = outdir / "periodograms"
         per_dir.mkdir(exist_ok=True)
         rows = []
-        lcs = list(lc_dir.glob("*csv"))
+        lcs = [p for p in lc_dir.glob("*csv") if int(p.stem) in sids]
         for p in tqdm(lcs, "Processing lightcurves"):
             sid = int(p.stem)
 
@@ -132,6 +134,7 @@ def app():
                 np.savez(per_dir / f"{sid}_rp.npz", **per_rp)
 
             else:
+                pass
 
                 per_g = np.load(per_dir / f"{sid}_g.npz")
                 per_bp = np.load(per_dir / f"{sid}_bp.npz")
@@ -140,9 +143,19 @@ def app():
             rows.append(
                 {
                     "source_id": sid,
-                    "best_freq_g": float(per_g["freq"][np.nanargmax(per_g["psi"])]),
-                    "best_freq_bp": float(per_bp["freq"][np.nanargmax(per_bp["psi"])]),
-                    "best_freq_rp": float(per_rp["freq"][np.nanargmax(per_rp["psi"])]),
+                    "best_freq_g": float(
+                        per_g["freq"][np.nanargmax(2 * per_g["lsp"] / per_g["theta"])]
+                    ),
+                    "best_freq_bp": float(
+                        per_bp["freq"][
+                            np.nanargmax(2 * per_bp["lsp"] / per_bp["theta"])
+                        ]
+                    ),
+                    "best_freq_rp": float(
+                        per_rp["freq"][
+                            np.nanargmax(2 * per_rp["lsp"] / per_rp["theta"])
+                        ]
+                    ),
                 }
             )
 
@@ -168,23 +181,17 @@ def app():
             if npz_g.exists():
                 z_g = np.load(npz_g)
                 per_g = PeriodogramBundle(
-                    freq=z_g["freq"], lsp=z_g["lsp"], theta=z_g["theta"], psi=z_g["psi"]
+                    freq=z_g["freq"], lsp=z_g["lsp"], theta=z_g["theta"]
                 )
             if npz_bp.exists():
                 z_bp = np.load(npz_bp)
                 per_bp = PeriodogramBundle(
-                    freq=z_bp["freq"],
-                    lsp=z_bp["lsp"],
-                    theta=z_bp["theta"],
-                    psi=z_bp["psi"],
+                    freq=z_bp["freq"], lsp=z_bp["lsp"], theta=z_bp["theta"]
                 )
             if npz_bp.exists():
                 z_rp = np.load(npz_rp)
                 per_rp = PeriodogramBundle(
-                    freq=z_rp["freq"],
-                    lsp=z_rp["lsp"],
-                    theta=z_rp["theta"],
-                    psi=z_rp["psi"],
+                    freq=z_rp["freq"], lsp=z_rp["lsp"], theta=z_rp["theta"]
                 )
 
             feats = extract_features_from_lc(
