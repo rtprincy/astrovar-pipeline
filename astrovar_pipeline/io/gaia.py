@@ -58,14 +58,14 @@ def fetch_gaia_epoch_photometry(
 
         ids_to_download.append(source_id)
 
-    batch_size = 1000
+    batch_size = 10
 
+    print(f"Downloading {len(ids_to_download)} lightcurves.")
     for i in tqdm.tqdm(
         range(0, len(ids_to_download), batch_size), "Downloading Gaia light curves"
     ):
         start, end = i, min(i + batch_size, len(ids_to_download))
         curr_ids = ids_to_download[start:end]
-
         try:
             with warnings.catch_warnings():
                 warnings.simplefilter("ignore", category=u.UnitsWarning)
@@ -80,7 +80,7 @@ def fetch_gaia_epoch_photometry(
                 )
 
                 for lc in lcs:
-                    id = lc.strip("EPOCH_PHOTOMETRY-Gaia DR3 ").strip(".fits")
+                    id = lc.split(" ")[2].strip(".fits")
                     path = f"{outdir}/{id}.csv"
                     table = lcs[lc][0]
                     table.write(path, overwrite=True)

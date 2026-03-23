@@ -1,8 +1,8 @@
 
 # Gaia and I/O
 gaia:
-  username: "${GAIA_USER}"      # or set explicitly here
-  password: "${GAIA_PASS}"      # or set explicitly here
+  username: "jcrans"      # or set explicitly here
+  password: "2]#x~X_$,}qHxE="      # or set explicitly here
   tap_url: "https://gea.esac.esa.int/tap-server/tap"
 data:
   source_id_list: "inputs/source_ids.csv"   # CSV with a 'source_id' column
