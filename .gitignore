@@ -18,11 +18,14 @@ build/
 .ipynb_checkpoints/
 
 # project data/output
-inputs/
-outputs/
+inputs/*
+outputs/*
 *.npz
 *.npy
 *.parquet
 *.csv
 *.png
 *.pdf
+
+# changes to config and source_id
+astrovar_pipeline/configs/default.yaml
