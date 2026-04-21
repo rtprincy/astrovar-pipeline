@@ -41,10 +41,13 @@ def psi_periodogram(
     )
     theta = lk_stat(periods, mag, err, time)
 
-    # psi = (2 * lsp) / theta
+    psi = (2 * lsp) / theta
+
+    # TODO: is there actually any use to saving theta, seems it is not used anymore after this?
 
     return {
         "freq": frequencies.astype(np.float32),
         "lsp": lsp.astype(np.float32),
         "theta": theta.astype(np.float32),
+        "psi": psi.astype(np.float32),
     }
