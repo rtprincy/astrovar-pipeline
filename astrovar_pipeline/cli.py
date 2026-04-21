@@ -5,8 +5,6 @@ import pandas as pd
 from .utils.config import load_config
 from .io.gaia import login, read_source_ids, fetch_gaia_epoch_photometry
 from .periodogram.psi_search import psi_periodogram, freq_grid
-from astropy.timeseries import LombScargle
-from lk_stat_package import lk_stat
 from .features.extract import (
     extract_features_from_lc,
     PeriodogramBundle,
@@ -55,107 +53,65 @@ def app():
         lc_dir = outdir / "lightcurves"
         per_dir = outdir / "periodograms"
         per_dir.mkdir(exist_ok=True)
+
         rows = []
-        lcs = [p for p in lc_dir.glob("*csv") if int(p.stem) in sids]
-        for p in tqdm(lcs, "Processing lightcurves"):
-            sid = int(p.stem)
+        lcs = [p for p in os.listdir(lc_dir) if int(p.strip(".csv")) in sids]
+        for path in tqdm(lcs, "Processing lightcurves"):
+            best_frequencies = []
+            sid = int(path.strip(".csv"))
 
             if not os.path.exists(per_dir / f"{sid}_rp.npz"):
-                lc = pd.read_csv(p)
+                lc = pd.read_csv(lc_dir / path)
 
-                # lc_flag=(lc['variability_flag_g_reject'].values)&(lc['variability_flag_bp_reject'].values)&(lc['variability_flag_rp_reject'].values)
-                lc_g = lc[~lc["variability_flag_g_reject"].values]
-                lc_bp = lc[~lc["variability_flag_bp_reject"].values]
-                lc_rp = lc[~lc["variability_flag_rp_reject"].values]
-
-                # Compute periodogram on g-band subset if available
-                lc = lc.dropna()
-                if lc.shape[0] < cfg["extraction"]["min_points"]:
+                # check if minimum lightcurve length is met
+                if len(lc.dropna()) < cfg["extraction"]["min_points"]:
+                    print("Not enough observations in lightcurve.")
                     continue
 
-                mag_g = lc_g["g_transit_mag"].dropna().to_numpy(copy=True)
-                Time_g = lc_g["g_transit_time"].dropna().to_numpy(copy=True)
-                flux_g = lc_g["g_transit_flux"].dropna().to_numpy(copy=True)
-                flux_err_g = lc_g["g_transit_flux_error"].dropna().to_numpy(copy=True)
-                mag_err_g = (2.5 / np.log(10)) * (flux_err_g / flux_g)
+                # calculate and save the periodogram for every filter
+                for filter in ["g", "bp", "rp"]:
+                    lc_x = lc[~lc[f"variability_flag_{filter}_reject"].values]
 
-                mag_bp = lc_bp["bp_mag"].dropna().to_numpy(copy=True)
-                Time_bp = lc_bp["bp_obs_time"].dropna().to_numpy(copy=True)
-                flux_bp = lc_bp["bp_flux"].dropna().to_numpy(copy=True)
-                flux_err_bp = lc_bp["bp_flux_error"].dropna().to_numpy(copy=True)
-                mag_err_bp = (2.5 / np.log(10)) * (flux_err_bp / flux_bp)
+                    ext = "_transit" if filter == "g" else ""
+                    time_ext = "_obs" if filter != "g" else ""
 
-                mag_rp = lc_rp["rp_mag"].dropna().to_numpy(copy=True)
-                Time_rp = lc_rp["rp_obs_time"].dropna().to_numpy(copy=True)
-                flux_rp = lc_rp["rp_flux"].dropna().to_numpy(copy=True)
-                flux_err_rp = lc_rp["rp_flux_error"].dropna().to_numpy(copy=True)
-                mag_err_rp = (2.5 / np.log(10)) * (flux_err_rp / flux_rp)
+                    mag = lc_x[f"{filter + ext}_mag"].dropna().to_numpy(copy=True)
+                    time = (
+                        lc_x[f"{filter + ext + time_ext}_time"]
+                        .dropna()
+                        .to_numpy(copy=True)
+                    )
+                    flux = lc_x[f"{filter + ext}_flux"].dropna().to_numpy(copy=True)
+                    flux_err = (
+                        lc_x[f"{filter + ext}_flux_error"].dropna().to_numpy(copy=True)
+                    )
+                    mag_err = (2.5 / np.log(10)) * (flux_err / flux)
 
-                # print("G-band")
-                per_g = psi_periodogram(
-                    Time_g,
-                    mag_g,
-                    mag_err_g,
-                    cfg["frequency_search"]["min_freq"],
-                    cfg["frequency_search"]["max_freq"],
-                    cfg["frequency_search"]["oversample"],
-                )
+                    per_x = psi_periodogram(
+                        time,
+                        mag,
+                        mag_err,
+                        cfg["frequency_search"]["min_freq"],
+                        cfg["frequency_search"]["max_freq"],
+                        cfg["frequency_search"]["oversample"],
+                    )
 
-                # print("BP-band")
-                per_bp = psi_periodogram(
-                    Time_bp,
-                    mag_bp,
-                    mag_err_bp,
-                    cfg["frequency_search"]["min_freq"],
-                    cfg["frequency_search"]["max_freq"],
-                    cfg["frequency_search"]["oversample"],
-                )
+                    best_frequencies.append(
+                        float(per_x["freq"][np.nanargmax(per_x["psi"])])
+                    )
 
-                # print("RP-band")
-                per_rp = psi_periodogram(
-                    Time_rp,
-                    mag_rp,
-                    mag_err_rp,
-                    cfg["frequency_search"]["min_freq"],
-                    cfg["frequency_search"]["max_freq"],
-                    cfg["frequency_search"]["oversample"],
-                )
-
-                # per_g = psi_periodogram(lc["g_transit_time"].values, lc["g_transit_flux"].values, lc["g_transit_flux_error"].values,
-                #                   cfg["frequency_search"]["min_freq"], cfg["frequency_search"]["max_freq"], cfg["frequency_search"]["oversample"])
-
-                # per_bp = psi_periodogram(lc["bp_obs_time"].values, lc["bp_flux"].values, lc["bp_flux_error"].values,
-                #                   cfg["frequency_search"]["min_freq"], cfg["frequency_search"]["max_freq"], cfg["frequency_search"]["oversample"])
-
-                # per_rp = psi_periodogram(lc["rp_obs_time"].values, lc["rp_flux"].values, lc["rp_flux_error"].values,
-                #                   cfg["frequency_search"]["min_freq"], cfg["frequency_search"]["max_freq"], cfg["frequency_search"]["oversample"])
-                np.savez(per_dir / f"{sid}_g.npz", **per_g)
-                np.savez(per_dir / f"{sid}_bp.npz", **per_bp)
-                np.savez(per_dir / f"{sid}_rp.npz", **per_rp)
-
+                    np.savez(per_dir / f"{sid}_{filter}.npz", **per_x)
             else:
-                pass
-
-                per_g = np.load(per_dir / f"{sid}_g.npz")
-                per_bp = np.load(per_dir / f"{sid}_bp.npz")
-                per_rp = np.load(per_dir / f"{sid}_rp.npz")
+                for filter in ["g", "bp", "rp"]:
+                    per_x = np.load(per_dir / f"{sid}_{filter}.npz")
+                    best_frequencies.append(per_x["freq"][np.nanargmax(per_x["psi"])])
 
             rows.append(
                 {
                     "source_id": sid,
-                    "best_freq_g": float(
-                        per_g["freq"][np.nanargmax(2 * per_g["lsp"] / per_g["theta"])]
-                    ),
-                    "best_freq_bp": float(
-                        per_bp["freq"][
-                            np.nanargmax(2 * per_bp["lsp"] / per_bp["theta"])
-                        ]
-                    ),
-                    "best_freq_rp": float(
-                        per_rp["freq"][
-                            np.nanargmax(2 * per_rp["lsp"] / per_rp["theta"])
-                        ]
-                    ),
+                    "best_freq_g": best_frequencies[0],
+                    "best_freq_bp": best_frequencies[1],
+                    "best_freq_rp": best_frequencies[2],
                 }
             )
 
@@ -167,9 +123,9 @@ def app():
         lc_dir = outdir / "lightcurves"
         per_dir = outdir / "periodograms"
         feat_rows = []
-        for p in lc_dir.glob("*.csv"):
-            sid = int(p.stem)
-            lc = pd.read_csv(p)
+        for path in lc_dir.glob("*.csv"):
+            sid = int(path.stem)
+            lc = pd.read_csv(path)
             npz_g = per_dir / f"{sid}_g.npz"
             npz_bp = per_dir / f"{sid}_bp.npz"
             npz_rp = per_dir / f"{sid}_rp.npz"
