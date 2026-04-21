@@ -17,6 +17,7 @@ class PeriodogramBundle:
     freq: np.ndarray
     lsp: np.ndarray
     theta: np.ndarray
+    psi: np.ndarray
 
 
 def freq_grid(times, oversample_factor=10, f0=None, fn=None):
@@ -33,10 +34,11 @@ def optimise_freq(oversampling_factor, psi, freq, Time, mag, mag_err):
     idx_peak = np.argmax(psi)
     f_step = np.diff(freq)[0]
     peak_freq = freq[idx_peak]
-    peak_period = 1 / peak_freq
+
     # Here we take 10 (oversampling factor) steps before and after the frequency peak as a new frequency search range.
     lower_range = max(freq.min(), peak_freq - (oversampling_factor * f_step))
     upper_range = min(freq.max(), peak_freq + (oversampling_factor * f_step))
+
     fine_grid_freq = freq_grid(
         Time, oversample_factor=100, f0=lower_range, fn=upper_range
     )
@@ -45,6 +47,7 @@ def optimise_freq(oversampling_factor, psi, freq, Time, mag, mag_err):
     )
     theta_fg = lk_stat(1 / fine_grid_freq, mag, mag_err, Time)
     psi_fine_grid = 2 * lsp_fg / theta_fg
+
     best_freq = fine_grid_freq[np.argmax(psi_fine_grid)]
     best_period = 1 / best_freq
 
@@ -58,114 +61,52 @@ def extract_features_from_lc(
     per_bp: PeriodogramBundle | None = None,
     per_rp: PeriodogramBundle | None = None,
 ) -> Dict[str, Any]:
-    feats = {}
     # Add periodogram features
-    if (per_g is not None) & (per_bp is not None) & (per_rp is not None):
-        lc_g = lc[~lc["variability_flag_g_reject"].values]
-        lc_bp = lc[~lc["variability_flag_bp_reject"].values]
-        lc_rp = lc[~lc["variability_flag_rp_reject"].values]
+    feats = {}
+    best_periods = []
+    for periodogram, filter in [(per_g, "g"), (per_bp, "bp"), (per_rp, "rp")]:
+        lc_x = lc[~lc[f"variability_flag_{filter}_reject"].values]
 
-        mag_g = lc_g["g_transit_mag"].dropna().values
-        Time_g = lc_g["g_transit_time"].dropna().values
-        flux_g = lc_g["g_transit_flux"].dropna().values
-        flux_err_g = lc_g["g_transit_flux_error"].dropna().values
-        mag_err_g = (2.5 / np.log(10)) * (flux_err_g / flux_g)
+        ext = "_transit" if filter == "g" else ""
+        time_ext = "_obs" if filter != "g" else ""
 
-        mag_bp = lc_bp["bp_mag"].dropna().values
-        Time_bp = lc_bp["bp_obs_time"].dropna().values
-        flux_bp = lc_bp["bp_flux"].dropna().values
-        flux_err_bp = lc_bp["bp_flux_error"].dropna().values
-        mag_err_bp = (2.5 / np.log(10)) * (flux_err_bp / flux_bp)
+        mag = lc_x[f"{filter + ext}_mag"].dropna().values
+        time = lc_x[f"{filter + ext + time_ext}_time"].dropna().values
+        flux = lc_x[f"{filter + ext}_flux"].dropna().values
+        flux_err = lc_x[f"{filter + ext}_flux_error"].dropna().values
+        mag_err = (2.5 / np.log(10)) * (flux_err / flux)
 
-        mag_rp = lc_rp["rp_mag"].dropna().values
-        Time_rp = lc_rp["rp_obs_time"].dropna().values
-        flux_rp = lc_rp["rp_flux"].dropna().values
-        flux_err_rp = lc_rp["rp_flux_error"].dropna().values
-        mag_err_rp = (2.5 / np.log(10)) * (flux_err_rp / flux_rp)
-
-        best_freq_g, best_period_g = optimise_freq(
-            oversampling_factor, per_g.psi, per_g.freq, Time_g, mag_g, mag_err_g
+        best_freq, best_period = optimise_freq(
+            oversampling_factor, periodogram.psi, periodogram.freq, time, mag, mag_err
         )
-        best_freq_bp, best_period_bp = optimise_freq(
-            oversampling_factor, per_bp.psi, per_bp.freq, Time_bp, mag_bp, mag_err_bp
-        )
-        best_freq_rp, best_period_rp = optimise_freq(
-            oversampling_factor, per_rp.psi, per_rp.freq, Time_rp, mag_rp, mag_err_rp
-        )
+        best_periods.append(best_period)
 
-        # best_freq_g=per_g.freq[np.nanargmax(per_g.psi)]
-        # best_freq_bp=per_bp.freq[np.nanargmax(per_bp.psi)]
-        # best_freq_rp=per_rp.freq[np.nanargmax(per_rp.psi)]
-
-        # best_period_g=1/best_freq_g
-        # best_period_bp=1/best_freq_bp
-        # best_period_rp=1/best_freq_rp
-
-        std_period = np.std([best_period_g, best_period_bp, best_period_rp])
-        frac_period = (best_period_g) / std_period
-
-        featG = lcs(
-            "G",
-            mag_g,
-            mag_err_g,
-            Time_g,
-            per_g.lsp,
-            per_g.psi,
-            per_g.freq,
-            flux_g,
-            flux_err_g,
-            best_freq_g,
-        )
-        featBP = lcs(
-            "BP",
-            mag_bp,
-            mag_err_bp,
-            Time_bp,
-            per_bp.lsp,
-            per_bp.psi,
-            per_bp.freq,
-            flux_bp,
-            flux_err_bp,
-            best_freq_bp,
-        )
-        featRP = lcs(
-            "RP",
-            mag_rp,
-            mag_err_rp,
-            Time_rp,
-            per_rp.lsp,
-            per_rp.psi,
-            per_rp.freq,
-            flux_rp,
-            flux_err_rp,
-            best_freq_rp,
+        featX = lcs(
+            filter.upper(),
+            mag,
+            mag_err,
+            time,
+            periodogram.lsp,
+            periodogram.psi,
+            periodogram.freq,
+            flux,
+            flux_err,
+            best_freq,
         )
 
-        feats.update(featG.compute_all_parameters())
-        feats.update(featBP.compute_all_parameters())
-        feats.update(featRP.compute_all_parameters())
+        feats.update(featX.compute_all_parameters())
 
-        feats.update(
-            {
-                "std": std_period,
-                "frac_period": frac_period,
-                "opt_period_g": best_period_g,
-                "opt_period_bp": best_period_bp,
-                "opt_period_rp": best_period_rp,
-            }
-        )
-
-        # print("Extracting Gaia summary variability statistics")
-
-        # Manually compute Gaia variability statistics
-
-        # gaia_summary_stat_G=calculate_variability_metrics(Time_g, mag_g, mag_err_g, band_suffix='_g_fov')
-        # gaia_summary_stat_BP=calculate_variability_metrics(Time_bp, mag_bp, mag_err_bp, band_suffix='_bp_fov')
-        # gaia_summary_stat_RP=calculate_variability_metrics(Time_rp, mag_rp, mag_err_rp, band_suffix='_rp_fov')
-
-        # feats.update(featsG.compute_all_parameters)
-        # feats.update(featsBP.compute_all_parameters)
-        # feats.update(featsRP.compute_all_parameters)
+    std_period = np.std(best_periods)
+    frac_period = best_periods[0] / std_period
+    feats.update(
+        {
+            "std": std_period,
+            "frac_period": frac_period,
+            "opt_period_g": best_periods[0],
+            "opt_period_bp": best_periods[1],
+            "opt_period_rp": best_periods[2],
+        }
+    )
 
     return feats
 
